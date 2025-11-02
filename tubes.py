@@ -1,28 +1,18 @@
 import time, sys, os
 from datetime import datetime
 
-# ------------------
-# ANIMASI & UTILITAS
-# ------------------
+# --------
+# UTILITAS 
+# --------
 
-def ketik(teks, delay=0.03):
-    for char in teks:
-        sys.stdout.write(char)
-        sys.stdout.flush()
-        time.sleep(delay)
-    print()
+def cetak(teks):
+    print(teks)
 
 def garis():
     print("─" * 55)
 
-def animasi_cetak_struk(teks):
-    for baris in teks.splitlines():
-        for char in baris:
-            sys.stdout.write(char)
-            sys.stdout.flush()
-            time.sleep(0.002)
-        print()
-        time.sleep(0.05)
+def cetak_struk(teks):
+    print(teks)
 
 os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -88,16 +78,16 @@ voucher_user = muat_voucher()
 # ----------------------
 
 while True:
-    ketik("🔐 Selamat datang di Sistem Kasir WARBUM 🛒\n", 0.04)
+    cetak("🔐 Selamat datang di Sistem Kasir WARBUM 🛒\n")
     print("1. Login (sudah punya akun)")
     print("2. Sign In (buat akun baru)")
     mode = input("Pilih (1/2): ")
 
     if mode == "2":
-        ketik("\n🆕 Pendaftaran Akun Baru", 0.03)
+        cetak("\n🆕 Pendaftaran Akun Baru")
         new_user = input("Masukkan username baru: ")
         if new_user in akun_kasir:
-            ketik("⚠️ Username sudah digunakan, silakan login.")
+            cetak("⚠️ Username sudah digunakan, silakan login.")
             continue
         new_pw = input("Masukkan password: ")
         akun_kasir[new_user] = new_pw
@@ -106,20 +96,20 @@ while True:
         simpan_akun(akun_kasir)
         simpan_poin(poin_user)
         simpan_voucher(voucher_user)
-        ketik("✅ Akun berhasil dibuat! Silakan login dengan akun baru Anda.\n", 0.04)
+        cetak("✅ Akun berhasil dibuat! Silakan login dengan akun baru Anda.\n")
         continue
 
     elif mode == "1":
         user = input("\n👤 Username: ")
         pw = input("🔑 Password: ")
         if user in akun_kasir and akun_kasir[user] == pw:
-            ketik(f"\n✅ Login berhasil! Selamat datang, {user.upper()}!\n", 0.04)
+            cetak(f"\n✅ Login berhasil! Selamat datang, {user.upper()}!\n")
             login_user = user
             break
         else:
-            ketik("❌ Username atau password salah!\n", 0.04)
+            cetak("❌ Username atau password salah!\n")
     else:
-        ketik("❌ Pilihan tidak valid!\n", 0.03)
+        cetak("❌ Pilihan tidak valid!\n")
 
 # ----------
 # MENU UTAMA
@@ -142,10 +132,10 @@ def menu_awal():
 def earn_point(username):
     global poin_user, voucher_user
     garis()
-    ketik("🎯 MENU PENUKARAN POIN\n", 0.03)
+    cetak("🎯 MENU PENUKARAN POIN\n")
     poin_saya = poin_user.get(username, 0)
-    ketik(f"💎 Poin kamu saat ini: {poin_saya}", 0.03)
-    ketik(f"🎟️ Voucher kamu saat ini: {voucher_user.get(username, 0)} voucher diskon", 0.03)
+    cetak(f"💎 Poin kamu saat ini: {poin_saya}")
+    cetak(f"🎟️ Voucher kamu saat ini: {voucher_user.get(username, 0)} voucher diskon")
 
     if poin_saya >= 100:
         tukar = input("Apakah kamu ingin menukar 100 poin menjadi 1 voucher diskon 10%? (yes/no): ").lower()
@@ -154,11 +144,11 @@ def earn_point(username):
             voucher_user[username] = voucher_user.get(username, 0) + 1
             simpan_poin(poin_user)
             simpan_voucher(voucher_user)
-            ketik("✅ Penukaran berhasil! Voucher dapat digunakan nanti.", 0.03)
+            cetak("✅ Penukaran berhasil! Voucher dapat digunakan nanti.")
         else:
-            ketik("❌ Penukaran dibatalkan.", 0.03)
+            cetak("❌ Penukaran dibatalkan.")
     else:
-        ketik("⚠️ Poin kamu belum cukup (butuh minimal 100 poin).", 0.03)
+        cetak("⚠️ Poin kamu belum cukup (butuh minimal 100 poin).")
 
 # -----------------
 # FUNGSI MODE ADMIN
@@ -166,7 +156,7 @@ def earn_point(username):
 transaksi_list = []
 def mode_admin():
     global kategori_menu
-    ketik("🧮 Masuk ke MODE ADMIN\n", 0.04)
+    cetak("🧮 Masuk ke MODE ADMIN\n")
     print("1. Lihat Statistik Penjualan")
     print("2. Tambahkan Menu Baru 🍽️")
     print("3. Kembali")
@@ -174,7 +164,7 @@ def mode_admin():
     
     if pilihan_admin == "1":
         if not transaksi_list:
-            ketik("⚠️ Belum ada transaksi untuk ditampilkan.", 0.03)
+            cetak("⚠️ Belum ada transaksi untuk ditampilkan.")
         else:
             total_transaksi = len(transaksi_list)
             total_pendapatan = sum(t["total_bayar"] for t in transaksi_list)
@@ -187,11 +177,11 @@ def mode_admin():
 
             item_terlaris = max(item_counter, key=item_counter.get)
             
-            ketik("📊 Statistik Penjualan", 0.03)
+            cetak("📊 Statistik Penjualan")
             garis()
-            ketik(f"Total Transaksi   : {total_transaksi}")
-            ketik(f"Total Pendapatan : Rp{int(total_pendapatan)}")
-            ketik(f"Item Terlaris    : {item_terlaris} ({item_counter[item_terlaris]} pcs)")
+            cetak(f"Total Transaksi   : {total_transaksi}")
+            cetak(f"Total Pendapatan : Rp{int(total_pendapatan)}")
+            cetak(f"Item Terlaris    : {item_terlaris} ({item_counter[item_terlaris]} pcs)")
             garis()
         
     if pilihan_admin == "2":
@@ -204,9 +194,9 @@ def mode_admin():
         nama = input("Masukkan nama menu: ")
         harga = int(input("Masukkan harga menu: "))
         kategori_menu[kategori_terpilih].append([kode, nama, harga])
-        ketik(f"✅ Menu '{nama}' berhasil ditambahkan ke {kategori_terpilih}!", 0.03)
+        cetak(f"✅ Menu '{nama}' berhasil ditambahkan ke {kategori_terpilih}!")
     else:
-        ketik("Kembali ke menu utama...")
+        cetak("Kembali ke menu utama...")
 
 # ---------
 # DATA MENU
@@ -248,7 +238,7 @@ def mulai_kasir(username):
             pilih_kat = int(input("Masukkan nomor kategori: "))
             kategori_terpilih = list(kategori_menu.keys())[pilih_kat - 1]
         except (ValueError, IndexError):
-            ketik("❌ Pilihan tidak valid!", 0.04)
+            cetak("❌ Pilihan tidak valid!")
             continue
 
         print(f"\n--- {kategori_terpilih} ---")
@@ -268,7 +258,7 @@ def mulai_kasir(username):
                     break
 
         if not ditemukan:
-            ketik("❌ Kode tidak valid!", 0.04)
+            cetak("❌ Kode tidak valid!")
 
         lagi = input("Apakah ada tambahan menu? (yes/no): ").lower()
         if lagi != "yes":
@@ -277,20 +267,20 @@ def mulai_kasir(username):
     garis()
     print("🧾  RINCIAN PESANAN")
     waktu_transaksi = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    ketik(f"🕒 Waktu Transaksi: {waktu_transaksi}\n", 0.03)
+    cetak(f"🕒 Waktu Transaksi: {waktu_transaksi}\n")
     total = 0
     for _, nama, harga, jumlah in keranjang:
         subtotal = harga * jumlah
-        ketik(f"{nama:<15} ({jumlah}x) = Rp{subtotal}", 0.01)
+        cetak(f"{nama:<15} ({jumlah}x) = Rp{subtotal}")
         total += subtotal
     garis()
-    ketik(f"💰 Total sebelum diskon: Rp{total}")
+    cetak(f"💰 Total sebelum diskon: Rp{total}")
 
     transaksi_list.append({
-    "user": login_user,
-    "waktu": waktu_transaksi,
-    "keranjang": keranjang,
-    "total_bayar": total,
+        "user": username,
+        "waktu": waktu_transaksi,
+        "keranjang": keranjang,
+        "total_bayar": total,
     })
     
     # -----------------------
@@ -306,48 +296,47 @@ def mulai_kasir(username):
             diskon = total * 0.1
             voucher_user[username] -= 1
             simpan_voucher(voucher_user)
-            ketik("✅ Voucher diskon 10% digunakan!\n", 0.03)
+            cetak("✅ Voucher diskon 10% digunakan!")
     else:
         kode_diskon = input("\nApakah kamu punya kode diskon? (yes/no): ").lower()
         if kode_diskon == "yes":
             kode = input("Masukkan kode diskon: ").upper()
             if kode == "HEMAT10":
                 diskon = total * 0.10
-                ketik("✅ Diskon 10% diterapkan!")
+                cetak("✅ Diskon 10% diterapkan!")
             elif kode == "MAKAN20":
                 diskon = total * 0.20
-                ketik("✅ Diskon 20% diterapkan!")
+                cetak("✅ Diskon 20% diterapkan!")
             elif kode == "KOPI5K":
                 diskon = 5000
-                ketik("✅ Potongan Rp5.000 diterapkan!")
+                cetak("✅ Potongan Rp5.000 diterapkan!")
             else:
-                ketik("❌ Kode tidak valid atau kadaluarsa.")
+                cetak("❌ Kode tidak valid atau kadaluarsa.")
 
     total -= diskon
     garis()
-    ketik(f"💸 Total diskon: Rp{int(diskon)}")
-    ketik(f"💰 Total bayar: Rp{int(total)}")
+    cetak(f"💸 Total diskon: Rp{int(diskon)}")
+    cetak(f"💰 Total bayar: Rp{int(total)}")
 
     metode = int(input("\n1. Tunai\n2. QRIS\nPilih metode (1/2): "))
     if metode == 1:
         bayar = int(input("Nominal uang: "))
         if bayar < total:
-            ketik("❌ Uang kurang!")
+            cetak("❌ Uang kurang!")
             return
         kembalian = bayar - total
-        ketik(f"💵 Kembalian: Rp{kembalian}")
+        cetak(f"💵 Kembalian: Rp{kembalian}")
     else:
-        ketik("💳 Pembayaran QRIS berhasil!")
+        cetak("💳 Pembayaran QRIS berhasil!")
 
     poin_didapat = int(total // 10000)
     poin_user[username] = poin_user.get(username, 0) + poin_didapat
     simpan_poin(poin_user)
-    ketik(f"🎁 Kamu dapat {poin_didapat} poin! Total poin sekarang: {poin_user[username]}\n", 0.03)
+    cetak(f"🎁 Kamu dapat {poin_didapat} poin! Total poin sekarang: {poin_user[username]}\n")
 
-    # CETAK STRUK DENGAN ANIMASI 
+    # CETAK STRUK TANPA ANIMASI
     garis()
-    ketik("\n🖨️ Sedang mencetak struk...\n")
-    time.sleep(1)
+    cetak("\n🖨️ Sedang mencetak struk...\n")
 
     struk = f"""
 ╔══════════════════════════════════╗
@@ -370,12 +359,12 @@ Terima kasih telah berbelanja 💚
 WARBUM — Nikmati hari lezatmu 🍴
 """
 
-    animasi_cetak_struk(struk)
+    cetak_struk(struk)
 
     with open("struk_terakhir.txt", "w", encoding="utf-8") as f:
         f.write(struk)
 
-    ketik("\n✅ Struk telah dicetak & disimpan (struk_terakhir.txt)\n")
+    cetak("\n✅ Struk telah dicetak & disimpan (struk_terakhir.txt)\n")
 
 # ---------------
 # LOOP MENU UTAMA
@@ -390,9 +379,9 @@ while True:
     elif pilih == "3":
         mode_admin()
     elif pilih == "4":
-        ketik("👋 Terima kasih telah menggunakan kasir WARBUM!")
+        cetak("👋 Terima kasih telah menggunakan kasir WARBUM!")
         break
     else:
-        ketik("❌ Pilihan tidak valid!")
+        cetak("❌ Pilihan tidak valid!")
 
 # LINK WEBSITE https://wartegmasadepan163.streamlit.app/
