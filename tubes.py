@@ -1,387 +1,367 @@
-import time, sys, os
-from datetime import datetime
+# ============================================================================================
+# PROGRAM KASIR WARBUM (Versi Final Sederhana)
+# Fitur: Login, Simpan Akun, Poin, Voucher, Kode Diskon, Non Tunai, Admin, Transaksi Tersimpan
+# ============================================================================================
 
-# --------
-# UTILITAS 
-# --------
+## FUNGSI ##
+# akun.txt                akun (Array)                              muat_akun() (Baca) / simpan_akun(akun) (Tulis)
+# poin.txt                poin_user (Dictionary)                    muat_poin() (Baca) / simpan_poin(poin) (Tulis)
+# voucher.txt             voucher_user (Dictionary)                 muat_voucher() (Baca) / simpan_voucher(voucher) (Tulis)
+# transaksi.txt           riwayat_transaksi (Array)                 muat_transaksi() (Baca) / simpan_transaksi(transaksi) (Tulis)
 
-def cetak(teks):
-    print(teks)
+## DATA GLOBAL ##
+# akun                    Array                                     Dipakai saat Login/Daftar  
+# poin_user               dictionary                                Dipakai saat Tukar Poin & Transaksi 
+# voucher_user            dictionary                                Dipakai saat Tukar Poin & Transaksi
+# riwayat_transaksi       Array                                     Dipakai oleh Mode Admin
+# kategori_menu           Array                                     Digunakan saat Pemesanan & Admin
+# username                string                                    Global State
+# login                   boolean                                   Global State (Saat Inisialisasi)
+# jalan                   boolean                                   Loop Kontrol Utama
 
-def garis():
-    print("─" * 55)
+## VARIABEL LOKAL ##
+# keranjang               Array                                     List item yang sedang dipesan dalam transaksi. Format: [nama, harga, jumlah, subtotal]
+# total                   integer                                   Total biaya awal (sebelum diskon).
+# diskon                  integer                                   Nilai total diskon yang diterapkan (dari voucher/kode promo).
+# total_bayar             integer                                   Total akhir yang harus dibayar setelah diskon.
+# bayar                   integer                                   Nominal uang tunai yang diberikan pelanggan.
+# kembalian               integer                                   Selisih uang kembali (bayar - total_bayar).
+# poin_tambah             integer                                   Jumlah poin baru yang diperoleh pelanggan (Rp10.000 = 1 poin)
+# mode                    string                                    Pilihan menu di dalam Mode Admin (1, 2, atau 3).
+# pendapatan              integer                                   Total akumulasi pendapatan dari "riwayat_transaksi".
+# pilih_kat               integer                                   Pilihan indeks kategori saat Admin menambah menu baru.
 
-def cetak_struk(teks):
-    print(teks)
 
-os.system('cls' if os.name == 'nt' else 'clear')
+import os
 
-# ----------------------
-# SISTEM LOGIN & SIGN IN
-# ----------------------
-
+# -----------------------------
+# FUNGSI FILE UNTUK SIMPAN DATA
+# -----------------------------
 def muat_akun():
-    akun = {}
-    if os.path.exists("akun_kasir.txt"):
-        with open("akun_kasir.txt") as f:
+    akun = []
+    if os.path.exists("akun.txt"):
+        with open("akun.txt", "r") as f:
             for line in f:
-                if ":" in line:
-                    user, pw = line.strip().split(":")
-                    akun[user] = pw
+                data = line.strip().split(":")
+                if len(data) == 2:
+                    akun.append([data[0], data[1]])
     return akun
 
 def simpan_akun(akun):
-    with open("akun_kasir.txt", "w") as f:
-        for user, pw in akun.items():
-            f.write(f"{user}:{pw}\n")
+    with open("akun.txt", "w") as f:
+        for a in akun:
+            f.write(a[0] + ":" + a[1] + "\n")
 
 def muat_poin():
     poin = {}
-    if os.path.exists("poin_pelanggan.txt"):
-        with open("poin_pelanggan.txt") as f:
+    if os.path.exists("poin.txt"):
+        with open("poin.txt", "r") as f:
             for line in f:
-                if ":" in line:
-                    user, p = line.strip().split(":")
-                    poin[user] = int(p)
+                data = line.strip().split(":")
+                if len(data) == 2:
+                    poin[data[0]] = int(data[1])
     return poin
 
 def simpan_poin(poin):
-    with open("poin_pelanggan.txt", "w") as f:
-        for user, p in poin.items():
-            f.write(f"{user}:{p}\n")
+    with open("poin.txt", "w") as f:
+        for user in poin:
+            f.write(user + ":" + str(poin[user]) + "\n")
 
 def muat_voucher():
     voucher = {}
-    if os.path.exists("voucher_diskon.txt"):
-        with open("voucher_diskon.txt") as f:
+    if os.path.exists("voucher.txt"):
+        with open("voucher.txt", "r") as f:
             for line in f:
-                if ":" in line:
-                    user, val = line.strip().split(":")
-                    voucher[user] = int(val)
+                data = line.strip().split(":")
+                if len(data) == 2:
+                    voucher[data[0]] = int(data[1])
     return voucher
 
 def simpan_voucher(voucher):
-    with open("voucher_diskon.txt", "w") as f:
-        for user, val in voucher.items():
-            f.write(f"{user}:{val}\n")
+    with open("voucher.txt", "w") as f:
+        for user in voucher:
+            f.write(user + ":" + str(voucher[user]) + "\n")
 
-# --------------
-# LOAD DATA USER
-# --------------
+def muat_transaksi():
+    transaksi = []
+    if os.path.exists("transaksi.txt"):
+        with open("transaksi.txt", "r") as f:
+            for line in f:
+                data = line.strip().split("|")
+                if len(data) == 3:
+                    user = data[0]
+                    deskripsi = data[1]
+                    total = int(data[2])
+                    transaksi.append([user, deskripsi, total])
+    return transaksi
 
-akun_kasir = muat_akun()
+def simpan_transaksi(transaksi):
+    with open("transaksi.txt", "w") as f:
+        for t in transaksi:
+            f.write(t[0] + "|" + t[1] + "|" + str(t[2]) + "\n")
+
+# -----------------------------
+# LOGIN DAN PENDAFTARAN
+# -----------------------------
+akun = muat_akun()
 poin_user = muat_poin()
 voucher_user = muat_voucher()
+riwayat_transaksi = muat_transaksi()
+username = ""
+login = False
 
-# ----------------------
-# PROSES LOGIN / SIGN IN
-# ----------------------
+print("╔════════════════════════════════╗")
+print("║      SELAMAT DATANG DI WARBUM  ║")
+print("╚════════════════════════════════╝")
 
-while True:
-    cetak("🔐 Selamat datang di Sistem Kasir WARBUM 🛒\n")
-    print("1. Login (sudah punya akun)")
-    print("2. Sign In (buat akun baru)")
-    mode = input("Pilih (1/2): ")
+while not login:
+    print("\n1. Login")
+    print("2. Daftar Akun Baru")
+    pilih = input("Pilih (1/2): ")
 
-    if mode == "2":
-        cetak("\n🆕 Pendaftaran Akun Baru")
-        new_user = input("Masukkan username baru: ")
-        if new_user in akun_kasir:
-            cetak("⚠️ Username sudah digunakan, silakan login.")
-            continue
-        new_pw = input("Masukkan password: ")
-        akun_kasir[new_user] = new_pw
-        poin_user[new_user] = 0
-        voucher_user[new_user] = 0
-        simpan_akun(akun_kasir)
+    if pilih == "1":
+        user = input("Masukkan username: ")
+        pw = input("Masukkan password: ")
+        for a in akun:
+            if a[0] == user and a[1] == pw:
+                print("Login berhasil! Selamat datang,", user)
+                username = user
+                if username not in poin_user:
+                    poin_user[username] = 0
+                if username not in voucher_user:
+                    voucher_user[username] = 0
+                login = True
+                break
+        if not login:
+            print("Username atau password salah!")
+
+    elif pilih == "2":
+        user_baru = input("Masukkan username baru: ")
+        pw_baru = input("Masukkan password baru: ")
+        akun.append([user_baru, pw_baru])
+        simpan_akun(akun)
+        poin_user[user_baru] = 0
+        voucher_user[user_baru] = 0
         simpan_poin(poin_user)
         simpan_voucher(voucher_user)
-        cetak("✅ Akun berhasil dibuat! Silakan login dengan akun baru Anda.\n")
-        continue
-
-    elif mode == "1":
-        user = input("\n👤 Username: ")
-        pw = input("🔑 Password: ")
-        if user in akun_kasir and akun_kasir[user] == pw:
-            cetak(f"\n✅ Login berhasil! Selamat datang, {user.upper()}!\n")
-            login_user = user
-            break
-        else:
-            cetak("❌ Username atau password salah!\n")
+        print("Akun berhasil dibuat! Silakan login.")
     else:
-        cetak("❌ Pilihan tidak valid!\n")
+        print("Pilihan tidak valid!")
 
-# ----------
-# MENU UTAMA
-# ----------
-
-def menu_awal():
-    print("╔════════════════════════════════╗")
-    print("║   WARBUM CASHIER SYSTEM MENU   ║")
-    print("╚════════════════════════════════╝")
-    print("1. Mulai Kasir 🛒")
-    print("2. Earn Point (Tukar Poin 🎯)")
-    print("3. Mode Admin ⚙️")
-    print("4. Keluar 🚪")
-    return input("Pilih menu (1-4): ")
-
-# -----------------
-# FUNGSI EARN POINT 
-# -----------------
-
-def earn_point(username):
-    global poin_user, voucher_user
-    garis()
-    cetak("🎯 MENU PENUKARAN POIN\n")
-    poin_saya = poin_user.get(username, 0)
-    cetak(f"💎 Poin kamu saat ini: {poin_saya}")
-    cetak(f"🎟️ Voucher kamu saat ini: {voucher_user.get(username, 0)} voucher diskon")
-
-    if poin_saya >= 100:
-        tukar = input("Apakah kamu ingin menukar 100 poin menjadi 1 voucher diskon 10%? (yes/no): ").lower()
-        if tukar == "yes":
-            poin_user[username] -= 100
-            voucher_user[username] = voucher_user.get(username, 0) + 1
-            simpan_poin(poin_user)
-            simpan_voucher(voucher_user)
-            cetak("✅ Penukaran berhasil! Voucher dapat digunakan nanti.")
-        else:
-            cetak("❌ Penukaran dibatalkan.")
-    else:
-        cetak("⚠️ Poin kamu belum cukup (butuh minimal 100 poin).")
-
-# -----------------
-# FUNGSI MODE ADMIN
-# -----------------
-transaksi_list = []
-def mode_admin():
-    global kategori_menu
-    cetak("🧮 Masuk ke MODE ADMIN\n")
-    print("1. Lihat Statistik Penjualan")
-    print("2. Tambahkan Menu Baru 🍽️")
-    print("3. Kembali")
-    pilihan_admin = input("Pilih menu admin (1-3): ")
-    
-    if pilihan_admin == "1":
-        if not transaksi_list:
-            cetak("⚠️ Belum ada transaksi untuk ditampilkan.")
-        else:
-            total_transaksi = len(transaksi_list)
-            total_pendapatan = sum(t["total_bayar"] for t in transaksi_list)
-            
-            # Hitung item terlaris
-            item_counter = {}
-            for t in transaksi_list:
-                for _, nama, _, jumlah in t["keranjang"]:
-                    item_counter[nama] = item_counter.get(nama, 0) + jumlah
-
-            item_terlaris = max(item_counter, key=item_counter.get)
-            
-            cetak("📊 Statistik Penjualan")
-            garis()
-            cetak(f"Total Transaksi   : {total_transaksi}")
-            cetak(f"Total Pendapatan : Rp{int(total_pendapatan)}")
-            cetak(f"Item Terlaris    : {item_terlaris} ({item_counter[item_terlaris]} pcs)")
-            garis()
-        
-    if pilihan_admin == "2":
-        print("\n📋 Tambah Menu Baru")
-        for i, kategori in enumerate(kategori_menu.keys(), 1):
-            print(f"{i}. {kategori}")
-        pilih = int(input("Pilih kategori (1-3): "))
-        kategori_terpilih = list(kategori_menu.keys())[pilih - 1]
-        kode = input("Masukkan kode menu (huruf unik): ").upper()
-        nama = input("Masukkan nama menu: ")
-        harga = int(input("Masukkan harga menu: "))
-        kategori_menu[kategori_terpilih].append([kode, nama, harga])
-        cetak(f"✅ Menu '{nama}' berhasil ditambahkan ke {kategori_terpilih}!")
-    else:
-        cetak("Kembali ke menu utama...")
-
-# ---------
+# -----------------------------
 # DATA MENU
-# ---------
-
-kategori_menu = {
-    "🍚 Makanan Utama": [
+# -----------------------------
+kategori_menu = [
+    ["Makanan Utama", [
         ["A", "Nasi Goreng", 15000],
         ["B", "Mie Ayam", 12000],
-        ["C", "Ayam Geprek", 14000],
-    ],
-    "☕ Minuman": [
+        ["C", "Ayam Geprek", 14000]
+    ]],
+    ["Minuman", [
         ["D", "Es Teh", 5000],
         ["E", "Kopi", 7000],
-        ["F", "Jus Alpukat", 12000],
-    ],
-    "🍩 Cemilan / Dessert": [
+        ["F", "Jus Alpukat", 12000]
+    ]],
+    ["Cemilan / Dessert", [
         ["G", "Donat", 8000],
         ["H", "Pisang Goreng", 9000],
         ["I", "Roti Bakar", 10000]
-    ]
-}
+    ]]
+]
 
-# ------------
-# FUNGSI KASIR
-# ------------
+jalan = True
 
-def mulai_kasir(username):
-    global poin_user, voucher_user
-    keranjang = []
+# -----------------------------
+# MENU UTAMA
+# -----------------------------
+while jalan:
+    print("\n╔════════════════════════════════╗")
+    print("║         MENU UTAMA WARBUM       ║")
+    print("╚════════════════════════════════╝")
+    print("1. Mulai Pemesanan")
+    print("2. Tukar Poin")
+    print("3. Mode Admin")
+    print("4. Keluar")
 
-    while True:
-        print("\n🍽️  PILIH KATEGORI MENU")
-        for i, kategori in enumerate(kategori_menu.keys(), 1):
-            print(f"{i}. {kategori}")
-        garis()
+    pilih = input("Pilih menu (1-4): ")
 
-        try:
-            pilih_kat = int(input("Masukkan nomor kategori: "))
-            kategori_terpilih = list(kategori_menu.keys())[pilih_kat - 1]
-        except (ValueError, IndexError):
-            cetak("❌ Pilihan tidak valid!")
+    # ===============================
+    # FITUR 1: PEMESANAN
+    # ===============================
+    if pilih == "1":
+        keranjang = []
+        total = 0
+        lanjut = True
+
+        while lanjut:
+            print("\nPilih kategori:")
+            for i in range(len(kategori_menu)):
+                print(str(i+1) + ". " + kategori_menu[i][0])
+            kat = int(input("Masukkan nomor kategori: ")) - 1
+
+            if 0 <= kat < len(kategori_menu):
+                print("\n--- " + kategori_menu[kat][0] + " ---")
+                for item in kategori_menu[kat][1]:
+                    print(item[0] + ". " + item[1] + " - Rp" + str(item[2]))
+
+                kode = input("Masukkan kode menu: ").upper()
+                jumlah = int(input("Masukkan jumlah: "))
+                ditemukan = False
+
+                for m in kategori_menu[kat][1]:
+                    if m[0] == kode:
+                        subtotal = m[2] * jumlah
+                        keranjang.append([m[1], m[2], jumlah, subtotal])
+                        total += subtotal
+                        print(m[1], "ditambahkan (" + str(jumlah) + "x)")
+                        ditemukan = True
+                        break
+
+                if not ditemukan:
+                    print("Kode menu tidak ditemukan!")
+            else:
+                print("Kategori tidak valid!")
+
+            ulang = input("Tambah menu lain? (yes/no): ").lower()
+            if ulang != "yes":
+                lanjut = False
+
+        print("\n=== RINCIAN PESANAN ===")
+        for k in keranjang:
+            print(k[0], "(" + str(k[2]) + "x) = Rp" + str(k[3]))
+        print("Total sebelum diskon: Rp" + str(total))
+
+        # Diskon dari voucher
+        diskon = 0
+        if voucher_user.get(username, 0) > 0:
+            pakai = input("Gunakan voucher 10%? (yes/no): ").lower()
+            if pakai == "yes":
+                diskon = total * 0.1
+                voucher_user[username] -= 1
+                simpan_voucher(voucher_user)
+                print("Voucher digunakan!")
+
+        # Diskon dari kode promo
+        else:
+            pakai_kode = input("Punya kode diskon? (yes/no): ").lower()
+            if pakai_kode == "yes":
+                kode = input("Masukkan kode diskon: ").upper()
+                if kode == "HEMAT10":
+                    diskon = total * 0.10
+                    print("Diskon 10% diterapkan!")
+                elif kode == "MAKAN20":
+                    diskon = total * 0.20
+                    print("Diskon 20% diterapkan!")
+                elif kode == "KOPI5K":
+                    diskon = 5000
+                    print("Potongan Rp5000 diterapkan!")
+                else:
+                    print("Kode tidak valid atau kadaluarsa.")
+
+        total_bayar = total - diskon
+        print("Total diskon: Rp" + str(int(diskon)))
+        print("Total bayar: Rp" + str(int(total_bayar)))
+
+        # Metode pembayaran
+        print("\nPilih metode pembayaran:")
+        print("1. Tunai")
+        print("2. Non-Tunai (QRIS)")
+        metode = input("Pilih (1/2): ")
+
+        if metode == "1":
+            bayar = int(input("Masukkan uang: "))
+            if bayar >= total_bayar:
+                kembalian = bayar - total_bayar
+                print("Kembalian: Rp" + str(kembalian))
+            else:
+                print("Uang tidak cukup!")
+                continue
+        elif metode == "2":
+            print("Pembayaran QRIS berhasil")
+        else:
+            print("Metode tidak valid!")
             continue
 
-        print(f"\n--- {kategori_terpilih} ---")
-        for kode, nama, harga in kategori_menu[kategori_terpilih]:
-            print(f"{kode}. {nama:<15} - Rp{harga}")
-        garis()
+        poin_tambah = total_bayar // 10000
+        poin_user[username] = poin_user.get(username, 0) + int(poin_tambah)
+        simpan_poin(poin_user)
+        print("Kamu dapat", poin_tambah, "poin! Total poin:", poin_user[username])
 
-        pilihan = input("Masukkan kode item yang ingin dibeli: ").upper()
-        ditemukan = False
+        riwayat_transaksi.append([username, "Transaksi", total_bayar])
+        simpan_transaksi(riwayat_transaksi)
 
-        for daftar in kategori_menu.values():
-            for kode, nama, harga in daftar:
-                if pilihan == kode:
-                    jumlah = int(input(f"Masukkan jumlah {nama}: "))
-                    ditemukan = True
-                    keranjang.append([kode, nama, harga, jumlah])
-                    break
-
-        if not ditemukan:
-            cetak("❌ Kode tidak valid!")
-
-        lagi = input("Apakah ada tambahan menu? (yes/no): ").lower()
-        if lagi != "yes":
-            break
-
-    garis()
-    print("🧾  RINCIAN PESANAN")
-    waktu_transaksi = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cetak(f"🕒 Waktu Transaksi: {waktu_transaksi}\n")
-    total = 0
-    for _, nama, harga, jumlah in keranjang:
-        subtotal = harga * jumlah
-        cetak(f"{nama:<15} ({jumlah}x) = Rp{subtotal}")
-        total += subtotal
-    garis()
-    cetak(f"💰 Total sebelum diskon: Rp{total}")
-
-    transaksi_list.append({
-        "user": username,
-        "waktu": waktu_transaksi,
-        "keranjang": keranjang,
-        "total_bayar": total,
-    })
-    
-    # -----------------------
-    # SISTEM DISKON KOMBINASI
-    # -----------------------
-
-    diskon = 0
-    kembalian = 0
-
-    if voucher_user.get(username, 0) > 0:
-        gunakan = input(f"\n🎟️ Kamu punya {voucher_user[username]} voucher diskon 10%. Gunakan sekarang? (yes/no): ").lower()
-        if gunakan == "yes":
-            diskon = total * 0.1
-            voucher_user[username] -= 1
-            simpan_voucher(voucher_user)
-            cetak("✅ Voucher diskon 10% digunakan!")
-    else:
-        kode_diskon = input("\nApakah kamu punya kode diskon? (yes/no): ").lower()
-        if kode_diskon == "yes":
-            kode = input("Masukkan kode diskon: ").upper()
-            if kode == "HEMAT10":
-                diskon = total * 0.10
-                cetak("✅ Diskon 10% diterapkan!")
-            elif kode == "MAKAN20":
-                diskon = total * 0.20
-                cetak("✅ Diskon 20% diterapkan!")
-            elif kode == "KOPI5K":
-                diskon = 5000
-                cetak("✅ Potongan Rp5.000 diterapkan!")
-            else:
-                cetak("❌ Kode tidak valid atau kadaluarsa.")
-
-    total -= diskon
-    garis()
-    cetak(f"💸 Total diskon: Rp{int(diskon)}")
-    cetak(f"💰 Total bayar: Rp{int(total)}")
-
-    metode = int(input("\n1. Tunai\n2. QRIS\nPilih metode (1/2): "))
-    if metode == 1:
-        bayar = int(input("Nominal uang: "))
-        if bayar < total:
-            cetak("❌ Uang kurang!")
-            return
-        kembalian = bayar - total
-        cetak(f"💵 Kembalian: Rp{kembalian}")
-    else:
-        cetak("💳 Pembayaran QRIS berhasil!")
-
-    poin_didapat = int(total // 10000)
-    poin_user[username] = poin_user.get(username, 0) + poin_didapat
-    simpan_poin(poin_user)
-    cetak(f"🎁 Kamu dapat {poin_didapat} poin! Total poin sekarang: {poin_user[username]}\n")
-
-    # CETAK STRUK TANPA ANIMASI
-    garis()
-    cetak("\n🖨️ Sedang mencetak struk...\n")
-
-    struk = f"""
-╔══════════════════════════════════╗
-║          WARBUM CASHIER          ║
-╚══════════════════════════════════╝
-🕒 {waktu_transaksi}
-👤 Kasir: {username}
-────────────────────────────────────
-"""
-    for _, nama, harga, jumlah in keranjang:
-        subtotal = harga * jumlah
-        struk += f"{nama:<15} x{jumlah:<2} Rp{subtotal}\n"
-
-    struk += f"""────────────────────────────────────
-💸 Diskon     : Rp{int(diskon)}
-💰 Total Bayar: Rp{int(total)}
-💵 Kembalian  : Rp{int(kembalian)}
-────────────────────────────────────
-Terima kasih telah berbelanja 💚
-WARBUM — Nikmati hari lezatmu 🍴
-"""
-
-    cetak_struk(struk)
-
-    with open("struk_terakhir.txt", "w", encoding="utf-8") as f:
-        f.write(struk)
-
-    cetak("\n✅ Struk telah dicetak & disimpan (struk_terakhir.txt)\n")
-
-# ---------------
-# LOOP MENU UTAMA
-# ---------------
-
-while True:
-    pilih = menu_awal()
-    if pilih == "1":
-        mulai_kasir(login_user)
+    # ===============================
+    # FITUR 2: TUKAR POIN
+    # ===============================
     elif pilih == "2":
-        earn_point(login_user)
-    elif pilih == "3":
-        mode_admin()
-    elif pilih == "4":
-        cetak("👋 Terima kasih telah menggunakan kasir WARBUM!")
-        break
-    else:
-        cetak("❌ Pilihan tidak valid!")
+        print("\n=== PENUKARAN POIN ===")
+        print("Poin kamu:", poin_user.get(username, 0))
+        print("Voucher kamu:", voucher_user.get(username, 0))
 
-# LINK WEBSITE https://wartegmasadepan163.streamlit.app/
+        if poin_user.get(username, 0) >= 100:
+            tukar = input("Tukar 100 poin jadi 1 voucher? (yes/no): ").lower()
+            if tukar == "yes":
+                poin_user[username] -= 100
+                voucher_user[username] = voucher_user.get(username, 0) + 1
+                simpan_poin(poin_user)
+                simpan_voucher(voucher_user)
+                print("Penukaran berhasil! Voucher bertambah.")
+            else:
+                print("Penukaran dibatalkan.")
+        else:
+            print("Poin belum cukup (minimal 100 poin).")
+
+    # ===============================
+    # FITUR 3: MODE ADMIN
+    # ===============================
+    elif pilih == "3":
+        if username != "admin":
+            print("Akses ditolak! Hanya admin yang bisa masuk.")
+        else:
+            print("\n=== MODE ADMIN ===")
+            print("1. Lihat Statistik Penjualan")
+            print("2. Tambah Menu Baru")
+            print("3. Kembali")
+            mode = input("Pilih menu admin (1-3): ")
+
+            if mode == "1":
+                if len(riwayat_transaksi) == 0:
+                    print("Belum ada transaksi.")
+                else:
+                    total_transaksi = len(riwayat_transaksi)
+                    pendapatan = 0
+                    for t in riwayat_transaksi:
+                        pendapatan += t[2]
+
+                    print("\n=== Statistik Penjualan ===")
+                    print("Total Transaksi :", total_transaksi)
+                    print("Total Pendapatan: Rp" + str(pendapatan))
+                    print("\nDaftar Transaksi:")
+                    for t in riwayat_transaksi:
+                        print("-", t[0], "membayar Rp" + str(t[2]))
+
+            elif mode == "2":
+                print("\nKategori:")
+                for i in range(len(kategori_menu)):
+                    print(str(i+1) + ". " + kategori_menu[i][0])
+                pilih_kat = int(input("Pilih kategori (1-3): ")) - 1
+
+                if 0 <= pilih_kat < len(kategori_menu):
+                    kode = input("Masukkan kode menu baru: ").upper()
+                    nama = input("Masukkan nama menu: ")
+                    harga = int(input("Masukkan harga menu: "))
+                    kategori_menu[pilih_kat][1].append([kode, nama, harga])
+                    print("Menu '" + nama + "' berhasil ditambahkan!")
+                else:
+                    print("Kategori tidak valid!")
+            else:
+                print("Kembali ke menu utama...")
+
+    # ===============================
+    # FITUR 4: KELUAR
+    # ===============================
+    elif pilih == "4":
+        print("Terima kasih telah menggunakan kasir WARBUM!")
+        jalan = False
+    else:
+        print("Pilihan tidak valid!")
