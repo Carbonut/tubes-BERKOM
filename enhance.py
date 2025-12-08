@@ -5,21 +5,21 @@ from dotenv import load_dotenv
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import TextSendMessage, MessageEvent, TextMessage
+from bs4 import BeautifulSoup
 
 # ======================
-# LOAD ENV (VARIABEL LINGKUNGAN)
+# LOAD ENV
 # ======================
 load_dotenv()
 
 CHANNEL_ACCESS_TOKEN = os.getenv("CHANNEL_ACCESS_TOKEN")
 CHANNEL_SECRET = os.getenv("CHANNEL_SECRET")
-OWM_API_KEY = os.getenv("OWM_API_KEY")
 
-if not CHANNEL_ACCESS_TOKEN or not CHANNEL_SECRET or not OWM_API_KEY:
-    raise RuntimeError("ENV tidak terbaca! Pastikan file .env sudah diisi.")
+if not CHANNEL_ACCESS_TOKEN or not CHANNEL_SECRET:
+    raise RuntimeError("ENV tidak terbaca! Pastikan file .env benar.")
 
 # ======================
-# INISIALISASI LINE BOT
+# INIT LINE API
 # ======================
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
@@ -27,77 +27,89 @@ handler = WebhookHandler(CHANNEL_SECRET)
 app = Flask(__name__)
 
 # ======================
-# SUBPROGRAM 1: AMBIL KOORDINAT KOTA
+# ARRAY + MAPPING URL AQICN
 # ======================
-def get_geo(city):
-    url = "http://api.openweathermap.org/geo/1.0/direct"
-    params = {"q": city, "limit": 1, "appid": OWM_API_KEY}
-    response = requests.get(url, params=params)
+KOTA_AQI = {
+    "jakarta": "https://aqicn.org/city/jakarta/",
+    "bandung": "https://aqicn.org/city/bandung/",
+    "surabaya": "https://aqicn.org/city/surabaya/",
+    "medan": "https://aqicn.org/city/medan/",
+    "semarang": "https://aqicn.org/city/semarang/",
+    "yogyakarta": "https://aqicn.org/city/yogyakarta/",
+    "malang": "https://aqicn.org/city/malang/",
+    "depok": "https://aqicn.org/city/depok/",
+    "bekasi": "https://aqicn.org/city/bekasi/"
+}
 
-    if response.status_code != 200 or not response.json():
+# ======================
+# SUBPROGRAM SCRAPING AQICN
+# ======================
+def get_aqi_scraping(kota):
+    kota = kota.lower()
+
+    # PERCABANGAN
+    if kota not in KOTA_AQI:
         return None
 
-    data = response.json()[0]
-    return data["lat"], data["lon"], data["name"]
+    url = KOTA_AQI[kota]
 
-# ======================
-# SUBPROGRAM 2: AMBIL DATA AQI
-# ======================
-def get_aqi(lat, lon):
-    url = "http://api.openweathermap.org/data/2.5/air_pollution"
-    params = {"lat": lat, "lon": lon, "appid": OWM_API_KEY}
-    response = requests.get(url, params=params)
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
-    if response.status_code != 200:
+    r = requests.get(url, headers=headers, timeout=15)
+
+    if r.status_code != 200:
         return None
 
-    components = response.json()["list"][0]["components"]
-    pm25 = components["pm2_5"]
+    soup = BeautifulSoup(r.text, "html.parser")
 
-    # ======================
-    # PERCABANGAN (IF ELSE)
-    # ======================
-    if pm25 <= 12:
-        aqi = int((pm25 / 12) * 50)
-    else:
-        aqi = int(50 + (pm25 - 12) * 2)
+    # Selector AQI yang STABIL di AQICN
+    aqi_tag = soup.find("div", id="aqiwgtvalue")
 
-    return pm25, aqi
+    if not aqi_tag:
+        return None
+
+    aqi = int(aqi_tag.text.strip())
+    return aqi
 
 # ======================
-# SUBPROGRAM 3: REKOMENDASI MASKER
+# SUBPROGRAM REKOMENDASI
 # ======================
 def rekomendasi_masker(aqi):
     if aqi <= 50:
-        return "Udara bagus, aman tanpa masker 👍"
+        return "Udara bagus, aman tanpa masker ✅"
     elif aqi <= 100:
-        return "Masih cukup aman, tetap waspada."
+        return "Sedang, masker disarankan 😷"
     elif aqi <= 150:
-        return "Disarankan memakai masker (N95)."
+        return "Tidak sehat untuk kelompok sensitif ⚠️"
     else:
-        return "SANGAT disarankan memakai masker N95 dan kurangi aktivitas luar!"
+        return "Tidak sehat! Wajib masker N95 🚨"
 
 # ======================
-# SUBPROGRAM 4: MENU BANTUAN (ARRAY + LOOPING)
+# SUBPROGRAM MENU (ARRAY + LOOP)
 # ======================
 def menu_bantuan():
     menu = [
-        "Ketik: cek <nama kota>",
-        "Contoh: cek jakarta",
-        "Bot ini menampilkan:",
-        "- PM2.5",
-        "- AQI",
-        "- Rekomendasi masker"
+        "=== MENU BOT AQI ===",
+        "1. Ketik: menu",
+        "2. Ketik: cek <nama kota>",
+        "3. Contoh: cek jakarta",
+        "",
+        "Daftar kota tersedia:"
     ]
 
-    hasil = "=== MENU BOT AQI ===\n"
-    for item in menu:   # <-- LOOPING
-        hasil += item + "\n"
+    hasil = ""
+    for m in menu:   # LOOPING
+        hasil += m + "\n"
+
+    for kota in KOTA_AQI:  # LOOPING ARRAY
+        hasil += f"- {kota}\n"
 
     return hasil
 
 # ======================
-# WEBHOOK CALLBACK
+# CALLBACK
 # ======================
 @app.route("/callback", methods=["POST"])
 def callback():
@@ -112,67 +124,52 @@ def callback():
     return "OK"
 
 # ======================
-# HANDLER PESAN (PERCABANGAN UTAMA)
+# HANDLER PESAN
 # ======================
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     pesan = event.message.text.lower()
 
-    # ======================
-    # JIKA USER KETIK "menu"
-    # ======================
     if pesan == "menu":
-        reply = menu_bantuan()
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=menu_bantuan())
+        )
         return
 
-    # ======================
-    # JIKA USER KETIK "cek kota"
-    # ======================
     if pesan.startswith("cek "):
         kota = pesan.replace("cek ", "").strip()
 
-        data_geo = get_geo(kota)
-        if not data_geo:
+        aqi = get_aqi_scraping(kota)
+
+        if not aqi:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text="Kota tidak ditemukan!")
+                TextSendMessage(text="Kota tidak tersedia.\nKetik: menu")
             )
             return
 
-        lat, lon, nama_kota = data_geo
-        data_aqi = get_aqi(lat, lon)
-
-        if not data_aqi:
-            line_bot_api.reply_message(
-                event.reply_token,
-                TextSendMessage(text="Gagal mengambil data AQI.")
-            )
-            return
-
-        pm25, aqi = data_aqi
         rekomendasi = rekomendasi_masker(aqi)
 
         hasil = (
-            f"📍 Kota: {nama_kota}\n"
-            f"🌫 PM2.5 : {pm25}\n"
-            f"📊 AQI : {aqi}\n\n"
+            f"📍 Kota: {kota.title()}\n"
+            f"📊 AQI: {aqi}\n\n"
             f"✅ Rekomendasi:\n{rekomendasi}"
         )
 
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=hasil))
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=hasil)
+        )
         return
 
-    # ======================
-    # JIKA FORMAT SALAH
-    # ======================
     line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(text="Perintah tidak dikenali.\nKetik: menu")
     )
 
 # ======================
-# JALANKAN SERVER
+# RUN SERVER
 # ======================
 if __name__ == "__main__":
     app.run(port=5000)
